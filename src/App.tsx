@@ -1,13 +1,7 @@
-import './App.css'
+import PixiTest from './scenes/PixiTest'
 
 function App() {
-
-  return (
-    <>
-      <title>El Corredor — Adrian Cornejo</title>
-      El Corredor
-    </>
-  )
+  return <PixiTest />
 }
 
 export default App
