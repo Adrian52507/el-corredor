@@ -1,7 +1,13 @@
 import PixiTest from './scenes/PixiTest'
+import HudMenu from './components/HudMenu'
 
 function App() {
-  return <PixiTest />
+  return (
+    <>
+      <HudMenu />
+      <PixiTest />
+    </>
+  )
 }
 
 export default App
