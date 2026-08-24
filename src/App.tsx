@@ -10,7 +10,7 @@ function App() {
 
   const handleSelectStop = (id: StopId) => {
     setActiveStop(id)
-    setPanelOpen(true)
+    setPanelOpen(id !== 'inicio')
   }
 
   return (
