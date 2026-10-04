@@ -76,14 +76,14 @@ export default function GameScene({ activeStop, onInteractParadero }: GameSceneP
       const character = new AnimatedSprite([idleTexture])
       character.animationSpeed = 0.15
       character.x = 400
-      character.y = 941 * 0.85 - character.height
+      character.y = 941 * 0.86 - character.height
       app.stage.addChild(character)
 
       const paraderoTexture = await Assets.load(objParadero)
       paraderoTexture.source.scaleMode = 'nearest'
       const paradero = new Sprite(paraderoTexture)
       paradero.x = 1296
-      paradero.y = 941 * 0.85 - paradero.height
+      paradero.y = 941 * 0.86 - paradero.height
       app.stage.addChild(paradero)
 
       let isWalking = false
