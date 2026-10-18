@@ -15,7 +15,7 @@ export default function ContentPanel({ activeStop, onClose }: ContentPanelProps)
     const stop = stops.find((s) => s.id === activeStop)
 
     return (
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-[#161B26] border-l-4 border-[#232a3a] p-6 overflow-y-auto">
+        <div className="absolute top-0 right-0 w-full sm:w-1/2 h-full bg-[#161B26] border-l-4 border-[#232a3a] p-6 overflow-y-auto">
             <button
                 onClick={onClose}
                 className="mb-4 w-8 h-8 bg-[#0D1117] border-2 border-[#232a3a] text-[#EDEBE6]"
