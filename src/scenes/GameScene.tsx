@@ -143,6 +143,9 @@ export default function GameScene({
         background: '#0D1117',
         resolution: Math.min(window.devicePixelRatio || 1, 2),
         autoDensity: true,
+        // Pixel art: dibujar siempre en pixeles enteros para que el sprite no
+        // "parpadee" al caer entre pixeles mientras camina.
+        roundPixels: true,
       })
 
       if (cancelled) {
@@ -201,7 +204,6 @@ export default function GameScene({
       paradero.scale.set((worldHeight * PARADERO_HEIGHT_RATIO) / paraderoTexture.height)
       paradero.x = worldWidth * PARADERO_X_RATIO
       paradero.y = groundY
-      world.addChild(paradero)
 
       const character = new AnimatedSprite([frontalTexture])
       character.animationSpeed = WALK_ANIM_SPEED
@@ -210,6 +212,8 @@ export default function GameScene({
       character.x = worldWidth * 0.25
       character.y = groundY
       world.addChild(character)
+      // El paradero va delante del personaje: al pararse junto a el, queda por detras.
+      world.addChild(paradero)
 
       // El corredor va en la capa superior, delante del paradero y del personaje:
       // al "subir", el personaje se desvanece por detras de la carroceria. La base
@@ -282,8 +286,8 @@ export default function GameScene({
         camX = Math.min(maxCamX, Math.max(0, desiredCamX))
 
         world.scale.set(scale)
-        world.x = -camX * scale
-        world.y = worldY
+        world.x = Math.round(-camX * scale)
+        world.y = Math.round(worldY)
       }
 
       // El bus siempre entra y sale justo fuera de lo que ve la camara (no de los
