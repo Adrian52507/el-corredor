@@ -35,12 +35,16 @@ const GROUND_RATIO: Record<StopId, number> = {
 }
 
 // Todas las medidas de juego se guardan como proporcion del alto del mundo (no como
-// pixeles fijos) para que escalen con cualquier fondo/ventana. Las referencias
-// originales se tomaron sobre un fondo de 941px de alto.
-const CHARACTER_HEIGHT_RATIO = 200 / 941
-const PARADERO_HEIGHT_RATIO = 260 / 941
-const PARADERO_REACH_RATIO = 150 / 941
-const WALK_SPEED_RATIO = 5 / 941 // por tick a 60fps, independiente del framerate real
+// pixeles fijos) para que escalen con cualquier fondo/ventana. Los fondos miden
+// 1540px de alto y las puertas de las fachadas ~150px, asi que el personaje y el
+// paradero van a su tamano nativo (1 px del sprite = 1 px del fondo).
+const BG_NATIVE_HEIGHT = 1540
+const CHARACTER_HEIGHT_RATIO = 140 / BG_NATIVE_HEIGHT
+const PARADERO_HEIGHT_RATIO = 207 / BG_NATIVE_HEIGHT
+const PARADERO_REACH = 0.75 // en alturas de personaje
+const PARADERO_X_RATIO = 0.6 // posicion horizontal del paradero (fraccion del ancho del fondo)
+const BUS_STOP_GAP = 0.15 // espacio entre el frontal del bus detenido y el paradero, en alturas de personaje
+const WALK_SPEED_RATIO = 6 / BG_NATIVE_HEIGHT // por tick a 60fps, independiente del framerate real
 
 // Sprites del personaje en pixel art nativo: idle-front.png es 60x140 y
 // walk-side.png es una tira de 4 cuadros de 72x142. Ambos tienen el pie en la
@@ -52,16 +56,17 @@ const WALK_FRAME_COUNT = 4
 const WALK_ANIM_SPEED = 8 / 60 // ~8fps de animacion para los 4 cuadros
 const CHARACTER_MARGIN = 40 // no dejar que el personaje camine fuera del arte transitable
 
-// corredor.png (1544x392) mira a la izquierda. Medidas sobre el PNG fuente: el
-// centro de la puerta esta en x=803, el vano de la puerta va de y=60 a y=270 y la
-// base de las ruedas es la fila 375. El ancla va en el centro de la puerta a nivel
-// de ruedas, asi bus.x es directamente "donde esta la puerta" aunque se voltee.
-const BUS_DOOR_X = 803
-const BUS_DOOR_HEIGHT = 210
-const BUS_DOOR_BOTTOM = 270
-const BUS_WHEEL_BOTTOM = 376
-const BUS_FRONT_EXTENT = BUS_DOOR_X - 216 // del centro de la puerta al frontal
-const BUS_REAR_EXTENT = 1335 - BUS_DOOR_X // del centro de la puerta a la cola
+// corredor.png (900x302) mira a la izquierda, que es hacia donde avanza: entra por
+// la derecha y sale por la izquierda, sin voltear. Medidas sobre el PNG fuente: el
+// centro de la puerta esta en x=471, el vano de la puerta va de y=45 a y=220 y la
+// base de las ruedas es la fila 301. El ancla va en el centro de la puerta a nivel
+// de ruedas, asi bus.x es directamente "donde esta la puerta".
+const BUS_DOOR_X = 471
+const BUS_DOOR_HEIGHT = 175
+const BUS_DOOR_BOTTOM = 220
+const BUS_WHEEL_BOTTOM = 302
+const BUS_FRONT_EXTENT = BUS_DOOR_X // del centro de la puerta al frontal (izquierda)
+const BUS_REAR_EXTENT = 900 - BUS_DOOR_X // del centro de la puerta a la cola (derecha)
 const BUS_DOOR_TO_CHAR = 1.05 // la puerta un pelin mas alta que el personaje
 const BUS_ARRIVE_DURATION = 2.2
 const BUS_LEAVE_DURATION = 1.8
@@ -191,29 +196,12 @@ export default function GameScene({
         return
       }
 
-      // El corredor va detras del paradero y del personaje: asi, al detenerse, la
-      // puerta queda enmarcando al personaje y "subir" es simplemente desvanecerse
-      // dentro de ella. La base de la puerta queda alineada con la vereda.
-      const busScale = (charHeight * BUS_DOOR_TO_CHAR) / BUS_DOOR_HEIGHT
-      const bus = new Sprite(busTexture)
-      bus.anchor.set(BUS_DOOR_X / busTexture.width, BUS_WHEEL_BOTTOM / busTexture.height)
-      bus.scale.set(-busScale, busScale) // volteado: el arte mira a la izquierda
-      bus.y = groundY + (BUS_WHEEL_BOTTOM - BUS_DOOR_BOTTOM) * busScale
-      bus.visible = false
-      world.addChild(bus)
-      const busFront = BUS_FRONT_EXTENT * busScale
-      const busRear = BUS_REAR_EXTENT * busScale
-
       const paradero = new Sprite(paraderoTexture)
       paradero.anchor.set(0.5, 1)
       paradero.scale.set((worldHeight * PARADERO_HEIGHT_RATIO) / paraderoTexture.height)
-      paradero.x = worldWidth * 0.775
+      paradero.x = worldWidth * PARADERO_X_RATIO
       paradero.y = groundY
       world.addChild(paradero)
-
-      // Punto donde se detiene la puerta: un poco antes del paradero, pero sin
-      // que el frontal del bus se salga del fondo.
-      const busStopX = Math.min(paradero.x - charHeight * 0.7, worldWidth - busFront)
 
       const character = new AnimatedSprite([frontalTexture])
       character.animationSpeed = WALK_ANIM_SPEED
@@ -222,6 +210,28 @@ export default function GameScene({
       character.x = worldWidth * 0.25
       character.y = groundY
       world.addChild(character)
+
+      // El corredor va en la capa superior, delante del paradero y del personaje:
+      // al "subir", el personaje se desvanece por detras de la carroceria. La base
+      // de la puerta queda alineada con la vereda.
+      const busScale = (charHeight * BUS_DOOR_TO_CHAR) / BUS_DOOR_HEIGHT
+      const bus = new Sprite(busTexture)
+      bus.anchor.set(BUS_DOOR_X / busTexture.width, BUS_WHEEL_BOTTOM / busTexture.height)
+      bus.scale.set(busScale)
+      bus.y = groundY + (BUS_WHEEL_BOTTOM - BUS_DOOR_BOTTOM) * busScale
+      bus.visible = false
+      world.addChild(bus)
+      const busFront = BUS_FRONT_EXTENT * busScale
+      const busRear = BUS_REAR_EXTENT * busScale
+
+      // Punto donde se detiene la puerta: el bus viene de la derecha y frena con el
+      // frontal un poquito antes del paradero (sin taparlo), pero sin que la cola
+      // se salga del fondo.
+      const paraderoRightEdge = paradero.x + paradero.width / 2
+      const busStopX = Math.min(
+        paraderoRightEdge + charHeight * BUS_STOP_GAP + busFront,
+        worldWidth - busRear
+      )
 
       let charState: CharState = 'frontal'
       let direction: 1 | -1 = 1
@@ -279,12 +289,12 @@ export default function GameScene({
       // El bus siempre entra y sale justo fuera de lo que ve la camara (no de los
       // bordes del fondo), para que el recorrido en pantalla dure lo mismo
       // independientemente de donde este el paradero.
-      const busOffscreenLeft = () => camX - busFront - 20
-      const busOffscreenRight = () => camX + viewWorldWidth + busRear + 20
+      const busOffscreenLeft = () => camX - busRear - 20
+      const busOffscreenRight = () => camX + viewWorldWidth + busFront + 20
 
       const busArrive = (tl: gsap.core.Timeline) => {
         tl.call(() => {
-          bus.x = busOffscreenLeft()
+          bus.x = busOffscreenRight()
           bus.visible = true
         })
         tl.to(bus, { x: busStopX, duration: BUS_ARRIVE_DURATION, ease: 'power2.out' })
@@ -292,7 +302,7 @@ export default function GameScene({
 
       const busLeave = (tl: gsap.core.Timeline) => {
         tl.to(bus, {
-          x: () => busOffscreenRight(),
+          x: () => busOffscreenLeft(),
           duration: BUS_LEAVE_DURATION,
           ease: 'power2.in',
           onComplete: () => {
@@ -373,7 +383,7 @@ export default function GameScene({
           setCharState(moving ? 'walk' : 'frontal')
 
           const distanceToParadero = Math.abs(character.x - paradero.x)
-          const isNear = distanceToParadero < worldHeight * PARADERO_REACH_RATIO
+          const isNear = distanceToParadero < charHeight * PARADERO_REACH
           const spacePressed = Boolean(keysPressed.current[' '] || keysPressed.current['TouchInteract'])
           if (spacePressed && !spaceWasPressed && isNear) {
             onInteractRef.current()
@@ -381,8 +391,9 @@ export default function GameScene({
           spaceWasPressed = spacePressed
         }
 
-        // El frontal es simetrico: solo se voltea la caminata.
-        character.scale.x = charScale * (charState === 'walk' ? direction : 1)
+        // Ambos sprites miran a la derecha en el PNG: al quedarse quieto, el
+        // frontal sigue mirando hacia donde caminaba por ultima vez.
+        character.scale.x = charScale * direction
 
         applyCamera()
       })
