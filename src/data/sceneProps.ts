@@ -2,6 +2,7 @@ import type { StopId } from './stops'
 import proyectos0 from '../assets/objects/cuadros/proyectos0.png'
 import proyectos1 from '../assets/objects/cuadros/proyectos1.png'
 import proyectos2 from '../assets/objects/cuadros/proyectos2.png'
+import proyectos3 from '../assets/objects/cuadros/proyectos3.png'
 import candados0 from '../assets/objects/candados/candados0.png'
 import candados1 from '../assets/objects/candados/candados1.png'
 import candados2 from '../assets/objects/candados/candados2.png'
@@ -10,6 +11,8 @@ import candados4 from '../assets/objects/candados/candados4.png'
 import candados5 from '../assets/objects/candados/candados5.png'
 import candados6 from '../assets/objects/candados/candados6.png'
 import candados7 from '../assets/objects/candados/candados7.png'
+import cabinaTelefonica from '../assets/objects/cabina-telefonica.png'
+import guardia from '../assets/objects/guardia.png'
 
 // Un prop es un sprite fijo dibujado sobre el fondo y bajo el personaje. x/y son la
 // esquina superior izquierda en pixeles del fondo NATIVO (2825x1540), no del canvas.
@@ -27,7 +30,7 @@ const POSTER_SLOTS: PropSlot[] = [
   { x: 645, y: POSTER_Y, texture: proyectos0 }, // izq. exterior
   { x: 821, y: POSTER_Y, texture: proyectos1 }, // izq. interior: VERSUSME
   { x: 1852, y: POSTER_Y, texture: proyectos2 }, // der. interior: METAHUMAN
-  { x: 2033, y: POSTER_Y, texture: null }, // der. exterior: queda "Mundos paralelos"
+  { x: 2033, y: POSTER_Y, texture: proyectos3 }, // der. exterior
 ]
 
 // --- HABILIDADES: candados (20x28) repartidos sobre la reja de malla ---
@@ -91,7 +94,17 @@ function generateLocks(): PropSlot[] {
   })
 }
 
+// --- Props apoyados en la vereda: y = linea de vereda (0.853 * 1540 ~ 1314) - alto del sprite ---
+
+// CONTACTO: cabina telefonica (114x210) frente al muro blanco, entre la puerta oscura y la roja.
+const PHONE_BOOTH: PropSlot = { x: 2400, y: 1314 - 210 - 8, texture: cabinaTelefonica }
+
+// EXPERIENCIA: guardia (72x133) frente a la reja de la puerta de la universidad.
+const GUARD: PropSlot = { x: 1500, y: 1314 - 133, texture: guardia }
+
 export const sceneProps: Partial<Record<StopId, PropSlot[]>> = {
   proyectos: POSTER_SLOTS,
   habilidades: generateLocks(),
+  contacto: [PHONE_BOOTH],
+  experiencia: [GUARD],
 }
