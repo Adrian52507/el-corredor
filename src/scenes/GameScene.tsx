@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Application, AnimatedSprite, Container, Rectangle, Sprite, Texture, Assets } from 'pixi.js'
 import gsap from 'gsap'
 import type { StopId } from '../data/stops'
+import { sceneProps } from '../data/sceneProps'
 import objParadero from '../assets/objects/paradero.png'
 import objCorredor from '../assets/objects/corredor.png'
 import bgInicio from '../assets/backgrounds/inicio.png'
@@ -194,10 +195,24 @@ export default function GameScene({
       const busTexture = await Assets.load(objCorredor)
       busTexture.source.scaleMode = 'nearest'
 
+      // Props de la parada (afiches, candados...): mismo scaleMode que el fondo para
+      // que se vean con la misma nitidez al escalar el mundo.
+      const props = (sceneProps[activeStop] ?? []).filter((p) => p.texture !== null)
+      const propTextures: Texture[] = await Promise.all(props.map((p) => Assets.load(p.texture!)))
+      for (const t of propTextures) t.source.scaleMode = 'nearest'
+
       if (cancelled) {
         app.destroy(true, { children: true })
         return
       }
+
+      // Hijos de world en coordenadas nativas del fondo: la camara los escala junto
+      // con el fondo, asi que siempre quedan alineados. Van antes del personaje.
+      props.forEach((p, i) => {
+        const sprite = new Sprite(propTextures[i])
+        sprite.position.set(p.x, p.y)
+        world.addChild(sprite)
+      })
 
       const paradero = new Sprite(paraderoTexture)
       paradero.anchor.set(0.5, 1)
