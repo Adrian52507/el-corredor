@@ -32,7 +32,7 @@ const GROUND_RATIO: Record<StopId, number> = {
   experiencia: 0.853,
   proyectos: 0.849,
   habilidades: 0.837,
-  contacto: 0.853,
+  contacto: 0.848, // alineado con la base de la cabina telefonica (y=1306)
 }
 
 // Todas las medidas de juego se guardan como proporcion del alto del mundo (no como
@@ -80,6 +80,7 @@ interface GameSceneProps {
   activeStop: StopId
   travelTo: StopId | null
   arriving: boolean
+  inputLocked: boolean
   onInteractParadero: () => void
   onDeparted: (stop: StopId) => void
   onArrived: () => void
@@ -89,6 +90,7 @@ export default function GameScene({
   activeStop,
   travelTo,
   arriving,
+  inputLocked,
   onInteractParadero,
   onDeparted,
   onArrived,
@@ -101,6 +103,7 @@ export default function GameScene({
   const onArrivedRef = useRef(onArrived)
   // Solo se lee al montar la escena: indica si llegamos en el corredor o a pie.
   const arrivingRef = useRef(arriving)
+  const inputLockedRef = useRef(inputLocked)
   const departRef = useRef<((stop: StopId) => void) | null>(null)
 
   useEffect(() => {
@@ -108,7 +111,8 @@ export default function GameScene({
     onDepartedRef.current = onDeparted
     onArrivedRef.current = onArrived
     arrivingRef.current = arriving
-  }, [onInteractParadero, onDeparted, onArrived, arriving])
+    inputLockedRef.current = inputLocked
+  }, [onInteractParadero, onDeparted, onArrived, arriving, inputLocked])
 
   useEffect(() => {
     if (travelTo) departRef.current?.(travelTo)
@@ -387,7 +391,7 @@ export default function GameScene({
       app.ticker.add(() => {
         const dt = app.ticker.deltaTime
 
-        if (!cutscene) {
+        if (!cutscene && !inputLockedRef.current) {
           const movingRight = Boolean(keysPressed.current['ArrowRight'] || keysPressed.current['TouchRight'])
           const movingLeft = Boolean(keysPressed.current['ArrowLeft'] || keysPressed.current['TouchLeft'])
           const moving = movingRight !== movingLeft
@@ -434,7 +438,7 @@ export default function GameScene({
 
   return (
     <>
-      <div ref={containerRef} className="fixed inset-0 w-screen h-screen overflow-hidden" />
+      <div ref={containerRef} className="fixed inset-0 w-screen h-screen overflow-hidden bg-[#0D1117]" />
 
       {/* Controles tactiles: solo aparecen en dispositivos con puntero "coarse" (tactil) */}
       <div className="hidden [@media(pointer:coarse)]:flex fixed bottom-6 left-6 gap-3 z-10 select-none">

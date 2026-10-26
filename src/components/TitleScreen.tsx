@@ -4,13 +4,12 @@ interface TitleScreenProps {
 
 export default function TitleScreen({ onStart }: TitleScreenProps) {
   return (
-    <div className="w-full h-screen bg-[#0D1117] flex flex-col items-center justify-center gap-8">
-      <h1 className="text-[#EDEBE6] text-2xl">ADRIAN CORNEJO</h1>
+    <div className="w-full h-screen bg-black flex items-center justify-center">
       <button
         onClick={onStart}
-        className="text-[#5C7CBF] text-sm border-2 border-[#5C7CBF] px-6 py-3 animate-pulse"
+        className="text-white text-xs sm:text-sm border-2 border-white px-8 py-4 hover:bg-white hover:text-black transition-colors"
       >
-        PRESS START
+        <span>START</span>
       </button>
     </div>
   )

@@ -13,6 +13,7 @@ import candados6 from '../assets/objects/candados/candados6.png'
 import candados7 from '../assets/objects/candados/candados7.png'
 import cabinaTelefonica from '../assets/objects/cabina-telefonica.png'
 import guardia from '../assets/objects/guardia.png'
+import cabinaFotos from '../assets/objects/cabina-fotos-abierta.png'
 
 // Un prop es un sprite fijo dibujado sobre el fondo y bajo el personaje. x/y son la
 // esquina superior izquierda en pixeles del fondo NATIVO (2825x1540), no del canvas.
@@ -102,9 +103,14 @@ const PHONE_BOOTH: PropSlot = { x: 2400, y: 1314 - 210 - 8, texture: cabinaTelef
 // EXPERIENCIA: guardia (72x133) frente a la reja de la puerta de la universidad.
 const GUARD: PropSlot = { x: 1500, y: 1314 - 133, texture: guardia }
 
+// SOBRE-MI: cabina de fotos abierta (200x264, 4px de margen transparente) delante del
+// Smart Fit, a la derecha del primer farol. Su vereda esta en 0.867 * 1540 ~ 1335.
+const PHOTO_BOOTH: PropSlot = { x: 970, y: 1335 - 260, texture: cabinaFotos }
+
 export const sceneProps: Partial<Record<StopId, PropSlot[]>> = {
   proyectos: POSTER_SLOTS,
   habilidades: generateLocks(),
   contacto: [PHONE_BOOTH],
   experiencia: [GUARD],
+  'sobre-mi': [PHOTO_BOOTH],
 }
