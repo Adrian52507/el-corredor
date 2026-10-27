@@ -74,7 +74,73 @@ const BUS_LEAVE_DURATION = 1.8
 const BOARD_DURATION = 0.35
 const FADE_DURATION = 0.4
 
+// Contorno blanco de los objetos interactuables. El grosor va en pixeles del sprite:
+// con el mundo escalado por alto (~0.7 px de pantalla por px nativo en 1080p), 1 px
+// se perderia al reescalar; se usan 4 para que el halo degradado se note.
+const OUTLINE_PX = 4
+const OUTLINE_REACH = 0.3 // en alturas de personaje, medido desde el borde del objeto
+const OUTLINE_FADE = 0.2 // fraccion por tick a 60fps
+const OUTLINE_PULSE_SPEED = 0.08
+const OUTLINE_INNER_ALPHA = 230 // alfa (0-255) del pixel pegado a la silueta
+const OUTLINE_FALLOFF = 1.1 // cuanto se apaga hacia afuera (con 4 px: 230, 167, 104, 40)
+const OUTLINE_MAX_ALPHA = 0.85 // opacidad maxima del contorno encendido
+
 type CharState = 'frontal' | 'walk'
+
+// Genera una textura con solo el anillo de pixeles que rodea la silueta del sprite
+// (dilatacion del alfa menos el original), en blanco degradado. Mide OUTLINE_PX mas por
+// cada lado que la textura original.
+function createOutlineTexture(texture: Texture): Texture {
+  const w = texture.width
+  const h = texture.height
+  const pad = OUTLINE_PX
+  const src = document.createElement('canvas')
+  src.width = w
+  src.height = h
+  const srcCtx = src.getContext('2d')!
+  srcCtx.drawImage(texture.source.resource as CanvasImageSource, 0, 0)
+  const alpha = srcCtx.getImageData(0, 0, w, h).data
+  const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && alpha[(y * w + x) * 4 + 3] > 0
+
+  const out = document.createElement('canvas')
+  out.width = w + pad * 2
+  out.height = h + pad * 2
+  const outCtx = out.getContext('2d')!
+  const img = outCtx.createImageData(out.width, out.height)
+  for (let y = 0; y < out.height; y++) {
+    for (let x = 0; x < out.width; x++) {
+      const sx = x - pad
+      const sy = y - pad
+      if (solid(sx, sy)) continue
+      // Vecindad en rombo: esquinas redondeadas, como un contorno dibujado a mano.
+      // Se guarda la distancia al pixel solido mas cercano para degradar el alfa.
+      let dist = Infinity
+      for (let dy = -pad; dy <= pad; dy++) {
+        for (let dx = -pad; dx <= pad; dx++) {
+          const d = Math.abs(dx) + Math.abs(dy)
+          if (d <= pad && d < dist && solid(sx + dx, sy + dy)) dist = d
+        }
+      }
+      if (dist <= pad) {
+        // Pegado a la silueta casi opaco, hacia afuera se desvanece.
+        const a = Math.round(OUTLINE_INNER_ALPHA * (1 - ((dist - 1) / pad) * OUTLINE_FALLOFF))
+        img.data.set([255, 255, 255, a], (y * out.width + x) * 4)
+      }
+    }
+  }
+  outCtx.putImageData(img, 0, 0)
+
+  const outline = Texture.from(out)
+  outline.source.scaleMode = 'nearest'
+  return outline
+}
+
+interface Highlight {
+  outline: Sprite
+  left: number
+  right: number
+  level: number
+}
 
 interface GameSceneProps {
   activeStop: StopId
@@ -212,10 +278,28 @@ export default function GameScene({
 
       // Hijos de world en coordenadas nativas del fondo: la camara los escala junto
       // con el fondo, asi que siempre quedan alineados. Van antes del personaje.
+      const highlights: Highlight[] = []
+      const addHighlight = (sprite: Sprite) => {
+        const outline = new Sprite(createOutlineTexture(sprite.texture))
+        outline.anchor.set(
+          (sprite.anchor.x * sprite.texture.width + OUTLINE_PX) / outline.texture.width,
+          (sprite.anchor.y * sprite.texture.height + OUTLINE_PX) / outline.texture.height
+        )
+        outline.scale.copyFrom(sprite.scale)
+        outline.position.copyFrom(sprite.position)
+        outline.alpha = 0
+        world.addChild(outline)
+        const left = sprite.x - sprite.anchor.x * sprite.width
+        const highlight = { outline, left, right: left + sprite.width, level: 0 }
+        highlights.push(highlight)
+        return highlight
+      }
+
       props.forEach((p, i) => {
         const sprite = new Sprite(propTextures[i])
         sprite.position.set(p.x, p.y)
         world.addChild(sprite)
+        addHighlight(sprite)
       })
 
       const paradero = new Sprite(paraderoTexture)
@@ -233,6 +317,7 @@ export default function GameScene({
       world.addChild(character)
       // El paradero va delante del personaje: al pararse junto a el, queda por detras.
       world.addChild(paradero)
+      const paraderoHighlight = addHighlight(paradero)
 
       // El corredor va en la capa superior, delante del paradero y del personaje:
       // al "subir", el personaje se desvanece por detras de la carroceria. La base
@@ -388,10 +473,14 @@ export default function GameScene({
         })
       }
 
+      let pulseTime = 0
+
       app.ticker.add(() => {
         const dt = app.ticker.deltaTime
+        const canInteract = !cutscene && !inputLockedRef.current
+        const isNearParadero = Math.abs(character.x - paradero.x) < charHeight * PARADERO_REACH
 
-        if (!cutscene && !inputLockedRef.current) {
+        if (canInteract) {
           const movingRight = Boolean(keysPressed.current['ArrowRight'] || keysPressed.current['TouchRight'])
           const movingLeft = Boolean(keysPressed.current['ArrowLeft'] || keysPressed.current['TouchLeft'])
           const moving = movingRight !== movingLeft
@@ -405,13 +494,27 @@ export default function GameScene({
           }
           setCharState(moving ? 'walk' : 'frontal')
 
-          const distanceToParadero = Math.abs(character.x - paradero.x)
-          const isNear = distanceToParadero < charHeight * PARADERO_REACH
           const spacePressed = Boolean(keysPressed.current[' '] || keysPressed.current['TouchInteract'])
-          if (spacePressed && !spaceWasPressed && isNear) {
+          if (spacePressed && !spaceWasPressed && isNearParadero) {
             onInteractRef.current()
           }
           spaceWasPressed = spacePressed
+        }
+
+        // Contornos: se encienden con un fundido cuando el personaje esta cerca del
+        // objeto y laten suavemente mientras siga ahi. El paradero usa el mismo rango
+        // en el que Espacio funciona.
+        pulseTime += OUTLINE_PULSE_SPEED * dt
+        const pulse = 0.8 + 0.2 * Math.sin(pulseTime)
+        const reach = charHeight * OUTLINE_REACH
+        for (const h of highlights) {
+          const near =
+            h === paraderoHighlight
+              ? isNearParadero
+              : character.x > h.left - reach && character.x < h.right + reach
+          const target = canInteract && near ? 1 : 0
+          h.level += (target - h.level) * Math.min(1, OUTLINE_FADE * dt)
+          h.outline.alpha = h.level * pulse * OUTLINE_MAX_ALPHA
         }
 
         // Ambos sprites miran a la derecha en el PNG: al quedarse quieto, el
